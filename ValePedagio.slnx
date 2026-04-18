@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ValePedagio.Api/ValePedagio.Api.csproj" />
+  <Project Path="ValePedagio.Application/ValePedagio.Application.csproj" />
+  <Project Path="ValePedagio.Domain/ValePedagio.Domain.csproj" />
+  <Project Path="ValePedagio.Infrastructure/ValePedagio.Infrastructure.csproj" />
+  <Project Path="ValePedagio.Tests/ValePedagio.Tests.csproj" />
+</Solution>

@@ -1,0 +1,6 @@
+@ValePedagio.Api_HostAddress = http://localhost:5198
+
+GET {{ValePedagio.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
