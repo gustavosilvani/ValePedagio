@@ -62,6 +62,7 @@ public sealed class ValePedagioApplicationServiceTests
         await using var dbContext = CreateDbContext(databaseName);
         var repository = new PostgresValePedagioProviderConfigurationRepository(dbContext);
         var config = await repository.GetAsync("tenant-merge", ValePedagioProviderType.EFrete);
+        config.Credentials["integratorHash"] = "hash-base";
         config.Credentials["username"] = "antigo";
         config.Credentials["password"] = "segredo";
         config.Credentials["quoteAction"] = "urn:quote-custom";
@@ -95,6 +96,9 @@ public sealed class ValePedagioApplicationServiceTests
         await using var dbContext = CreateDbContext(databaseName);
         var repository = new PostgresValePedagioProviderConfigurationRepository(dbContext);
         var config = await repository.GetAsync("tenant-clear", ValePedagioProviderType.EFrete);
+        config.Credentials["integratorHash"] = "hash-base";
+        config.Credentials["username"] = "u";
+        config.Credentials["password"] = "p";
         config.Credentials["token"] = "abc";
         await repository.SaveAsync(config);
 
@@ -121,6 +125,7 @@ public sealed class ValePedagioApplicationServiceTests
         await using var dbContext = CreateDbContext(databaseName);
         var repository = new PostgresValePedagioProviderConfigurationRepository(dbContext);
         var config = await repository.GetAsync("tenant-ph", ValePedagioProviderType.EFrete);
+        config.Credentials["integratorHash"] = "hash-base";
         config.Credentials["password"] = "real-secret";
         await repository.SaveAsync(config);
 
@@ -266,6 +271,29 @@ public sealed class ValePedagioApplicationServiceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => client.QuoteAsync(settings, CreateContext("tenant-a"), CancellationToken.None));
 
         Assert.Contains("Operacao rejeitada", exception.Message);
+    }
+
+    [Fact]
+    public async Task PutProviderConfiguration_ShouldReturn400WhenEfreteIncomplete()
+    {
+        await using var factory = new ValePedagioApiFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tenant-Id", "tenant-put-400");
+
+        var request = new ValePedagioProviderConfigurationRequest(
+            Enabled: true,
+            EndpointBaseUrl: null,
+            CallbackMode: null,
+            Credentials: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["username"] = "apenas-usuario"
+            });
+
+        var response = await client.PutAsJsonAsync("/api/v1/vale-pedagio/configuracoes/EFrete", request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("integratorHash", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("segredo", body, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -152,6 +152,9 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
     public async Task<ValePedagioProviderConfigurationDto> UpdateProviderConfigurationAsync(string tenantId, ValePedagioProviderType provider, ValePedagioProviderConfigurationRequest request, CancellationToken cancellationToken = default)
     {
         var config = await _configurationRepository.GetAsync(tenantId, provider, cancellationToken);
+        var mergedPreview = ValePedagioProviderCredentialsValidator.MergePreview(config.Credentials, request.Credentials);
+        ValePedagioProviderCredentialsValidator.EnsureCompleteForProvider(provider, mergedPreview);
+
         config.Enabled = request.Enabled;
         config.EndpointBaseUrl = request.EndpointBaseUrl?.Trim() ?? config.EndpointBaseUrl;
         config.CallbackMode = string.IsNullOrWhiteSpace(request.CallbackMode) ? config.CallbackMode : request.CallbackMode.Trim();

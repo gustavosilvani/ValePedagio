@@ -32,8 +32,15 @@ public sealed class ConfiguracoesController : ControllerBase
         CancellationToken cancellationToken)
     {
         var tenantId = ResolveTenantId();
-        var config = await _service.UpdateProviderConfigurationAsync(tenantId, provider, request, cancellationToken);
-        return Ok(config);
+        try
+        {
+            var config = await _service.UpdateProviderConfigurationAsync(tenantId, provider, request, cancellationToken);
+            return Ok(config);
+        }
+        catch (ValePedagioConfigurationValidationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     private string ResolveTenantId()
