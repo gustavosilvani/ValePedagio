@@ -1,5 +1,11 @@
 using System.Text.Json.Serialization;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using ValePedagio.Api;
 using ValePedagio.Application;
 using ValePedagio.Domain;
 using ValePedagio.Infrastructure;
@@ -7,6 +13,23 @@ using ValePedagio.Infrastructure.Persistence;
 using ValePedagio.Infrastructure.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
+Activity.DefaultIdFormat = ActivityIdFormat.W3C;
+Activity.ForceDefaultIdFormat = true;
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("service.name", builder.Environment.ApplicationName)
+        .WriteTo.Console();
+});
+
+var serviceName = builder.Environment.ApplicationName;
+var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+var otlpEndpoint = builder.Configuration["OpenTelemetry:Otlp:Endpoint"]
+    ?? builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
 builder.Services
     .AddControllers()
@@ -49,12 +72,46 @@ builder.Services.AddDbContext<ValePedagioDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
 });
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString, name: "database", tags: new[] { "db", "ready" })
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: new[] { "live" });
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(
+        serviceName: serviceName,
+        serviceVersion: serviceVersion,
+        serviceInstanceId: Environment.MachineName))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+        }
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusExporter();
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            metrics.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+        }
+    });
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IValePedagioSolicitacaoRepository, PostgresValePedagioSolicitacaoRepository>();
 builder.Services.AddScoped<IValePedagioProviderConfigurationRepository, PostgresValePedagioProviderConfigurationRepository>();
 builder.Services.AddScoped<IValePedagioProviderResolver, ValePedagioProviderResolver>();
 builder.Services.AddScoped<IValePedagioApplicationService, ValePedagioApplicationService>();
+builder.Services.AddHostedService<ValePedagioPendingSyncHostedService>();
 
 builder.Services.AddHttpClient<EFreteSoapClient>(client =>
 {
@@ -77,7 +134,18 @@ if (builder.Configuration.GetValue("ValePedagio:AutoApplyMigrations", false))
 }
 
 app.UseCors("ValePedagioSpa");
+app.UseSerilogRequestLogging();
+app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
 app.MapControllers();
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
 app.MapGet("/", () => Results.Ok(new
 {
     service = "ValePedagio.Api",

@@ -213,6 +213,8 @@ public sealed class ValePedagioApplicationServiceTests
             Guid.NewGuid(),
             "tenant-a",
             ValePedagioProviderType.EFrete,
+            ValePedagioIntegrationMode.Real,
+            ValePedagioFlowType.QuoteAndPurchase,
             "transportador-1",
             "motorista-1",
             "veiculo-1",
@@ -262,6 +264,7 @@ public sealed class ValePedagioApplicationServiceTests
             null,
             new EFreteOperationConfiguration("ValePedagioService.asmx", "Quote", "urn:quote", "1", null),
             new EFreteOperationConfiguration("ValePedagioService.asmx", "Purchase", "urn:purchase", "1", null),
+            new EFreteOperationConfiguration("ValePedagioService.asmx", "Sync", "urn:sync", "1", null),
             new EFreteOperationConfiguration("ValePedagioService.asmx", "Cancel", "urn:cancel", "1", null),
             new EFreteOperationConfiguration("ValePedagioService.asmx", "Receipt", "urn:receipt", "1", null),
             TimeSpan.FromSeconds(5));

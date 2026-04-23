@@ -41,10 +41,17 @@ public sealed class ValePedagioDbContext : DbContext
         solicitacao.Property(item => item.DocumentoResponsavelPagamento).HasMaxLength(32);
         solicitacao.Property(item => item.Observacoes).HasMaxLength(4000);
         solicitacao.Property(item => item.CallbackUrl).HasMaxLength(1024);
+        solicitacao.Property(item => item.FlowType).HasConversion<string>().HasMaxLength(32);
+        solicitacao.Property(item => item.IntegrationMode).HasConversion<string>().HasMaxLength(32);
         solicitacao.Property(item => item.Status).HasConversion<string>().HasMaxLength(32);
+        solicitacao.Property(item => item.ProviderStatus).HasMaxLength(128);
         solicitacao.Property(item => item.Protocolo).HasMaxLength(128);
         solicitacao.Property(item => item.NumeroCompra).HasMaxLength(128);
+        solicitacao.Property(item => item.FailureCategory).HasConversion<string>().HasMaxLength(32);
         solicitacao.Property(item => item.FailureReason).HasMaxLength(4000);
+        solicitacao.Property(item => item.LastSyncAt).HasColumnType("timestamp with time zone");
+        solicitacao.Property(item => item.NextRetryAt).HasColumnType("timestamp with time zone");
+        solicitacao.Property(item => item.ConcludedAt).HasColumnType("timestamp with time zone");
         solicitacao.Property(item => item.RawRequestPayload).HasColumnType("text");
         solicitacao.Property(item => item.RawResponsePayload).HasColumnType("text");
         solicitacao.Property(item => item.CreatedAt).HasColumnType("timestamp with time zone");
@@ -54,7 +61,10 @@ public sealed class ValePedagioDbContext : DbContext
         solicitacao.Property(item => item.Receipt).HasJsonbConversion();
         solicitacao.Property(item => item.RegulatoryItems).HasJsonbConversion();
         solicitacao.Property(item => item.AuditTrail).HasJsonbConversion();
+        solicitacao.Property(item => item.SyncAttempts).HasJsonbConversion();
+        solicitacao.Property(item => item.ProviderArtifacts).HasJsonbConversion();
         solicitacao.HasIndex(item => new { item.TenantId, item.CreatedAt });
         solicitacao.HasIndex(item => new { item.TenantId, item.Provider, item.Status });
+        solicitacao.HasIndex(item => new { item.TenantId, item.Provider, item.NumeroCompra });
     }
 }

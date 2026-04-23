@@ -8,17 +8,17 @@ public static class ValePedagioProviderCatalog
 {
     public static IReadOnlyCollection<ValePedagioProviderDescriptor> Descriptors { get; } =
     [
-        new(ValePedagioProviderType.EFrete, "e-Frete", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.DBTrans, "DBTrans", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.Repom, "Repom", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.DigitalCom, "DigitalCom", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.Ambipar, "Ambipar", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.Extratta, "Extratta", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.Pamcard, "Pamcard", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.QualP, "QualP", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.SemParar, "SemParar", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.Target, "Target", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry]),
-        new(ValePedagioProviderType.NDDCargo, "NDDCargo", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry])
+        new(ValePedagioProviderType.EFrete, "e-Frete", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Real),
+        new(ValePedagioProviderType.DBTrans, "DBTrans", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.Repom, "Repom", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.DigitalCom, "DigitalCom", 1, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.Ambipar, "Ambipar", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.Extratta, "Extratta", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.Pamcard, "Pamcard", 2, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.QualP, "QualP", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.SemParar, "SemParar", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.Target, "Target", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated),
+        new(ValePedagioProviderType.NDDCargo, "NDDCargo", 3, [ValePedagioCapability.Quote, ValePedagioCapability.Purchase, ValePedagioCapability.Cancel, ValePedagioCapability.Receipt, ValePedagioCapability.Callback, ValePedagioCapability.Retry, ValePedagioCapability.Sync], ValePedagioIntegrationMode.Simulated)
     ];
 }
 
@@ -83,6 +83,10 @@ public static class ValePedagioProviderConfigurationFactory
                     ["purchaseOperation"] = "ComprarValePedagio",
                     ["purchaseAction"] = "http://schemas.ipc.adm.br/efrete/vale-pedagio/ComprarValePedagio",
                     ["purchaseVersion"] = "1",
+                    ["syncServicePath"] = "ValePedagioService.asmx",
+                    ["syncOperation"] = "ConsultarValePedagio",
+                    ["syncAction"] = "http://schemas.ipc.adm.br/efrete/vale-pedagio/ConsultarValePedagio",
+                    ["syncVersion"] = "1",
                     ["cancelServicePath"] = "ValePedagioService.asmx",
                     ["cancelOperation"] = "CancelarValePedagio",
                     ["cancelAction"] = "http://schemas.ipc.adm.br/efrete/vale-pedagio/CancelarValePedagio",
@@ -94,6 +98,7 @@ public static class ValePedagioProviderConfigurationFactory
                     ["loginRequestTemplate"] = string.Empty,
                     ["quoteRequestTemplate"] = string.Empty,
                     ["purchaseRequestTemplate"] = string.Empty,
+                    ["syncRequestTemplate"] = string.Empty,
                     ["cancelRequestTemplate"] = string.Empty,
                     ["receiptRequestTemplate"] = string.Empty
                 });
@@ -138,24 +143,7 @@ public sealed class ValePedagioProviderResolver : IValePedagioProviderResolver
     {
         if (preferredProvider.HasValue)
         {
-            var preferredDescriptor = ValePedagioProviderCatalog.Descriptors.SingleOrDefault(item => item.Type == preferredProvider.Value);
-            if (preferredDescriptor is null)
-            {
-                throw new InvalidOperationException($"Provedor {preferredProvider.Value} não está implementado.");
-            }
-
-            if (!preferredDescriptor.Capabilities.Contains(requiredCapability))
-            {
-                throw new InvalidOperationException($"O provedor {preferredDescriptor.DisplayName} não suporta a operação {requiredCapability}.");
-            }
-
-            var preferredConfig = await _configurationRepository.GetAsync(tenantId, preferredProvider.Value, cancellationToken);
-            if (!preferredConfig.Enabled)
-            {
-                throw new InvalidOperationException($"O provedor {preferredDescriptor.DisplayName} está desabilitado para o tenant {tenantId}.");
-            }
-
-            return _providers[preferredProvider.Value];
+            return await ResolvePreferredAsync(tenantId, requiredCapability, preferredProvider.Value, cancellationToken);
         }
 
         foreach (var descriptor in ValePedagioProviderCatalog.Descriptors.OrderBy(item => item.Wave).ThenBy(item => item.DisplayName))
@@ -174,6 +162,28 @@ public sealed class ValePedagioProviderResolver : IValePedagioProviderResolver
 
         throw new InvalidOperationException($"Nenhum provedor habilitado suporta a operação {requiredCapability} para o tenant {tenantId}.");
     }
+
+    private async Task<IValePedagioProvider> ResolvePreferredAsync(string tenantId, ValePedagioCapability requiredCapability, ValePedagioProviderType provider, CancellationToken cancellationToken)
+    {
+        var descriptor = ValePedagioProviderCatalog.Descriptors.SingleOrDefault(item => item.Type == provider);
+        if (descriptor is null)
+        {
+            throw new InvalidOperationException($"Provedor {provider} não está implementado.");
+        }
+
+        if (!descriptor.Capabilities.Contains(requiredCapability))
+        {
+            throw new InvalidOperationException($"O provedor {descriptor.DisplayName} não suporta a operação {requiredCapability}.");
+        }
+
+        var config = await _configurationRepository.GetAsync(tenantId, provider, cancellationToken);
+        if (!config.Enabled)
+        {
+            throw new InvalidOperationException($"O provedor {descriptor.DisplayName} está desabilitado para o tenant {tenantId}.");
+        }
+
+        return _providers[provider];
+    }
 }
 
 public sealed class CatalogValePedagioProvider : IValePedagioProvider
@@ -187,12 +197,62 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
 
     public Task<ValePedagioProviderOperationResult> QuoteAsync(ValePedagioProviderOperationContext context, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(BuildResult(context, purchase: false));
+        return Task.FromResult(BuildResult(context, purchase: false, suggestedStatus: ValePedagioStatus.Cotado, providerStatus: "quoted", operation: "quote", existingSolicitacao: null));
     }
 
     public Task<ValePedagioProviderOperationResult> PurchaseAsync(ValePedagioProviderOperationContext context, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(BuildResult(context, purchase: true));
+        return Task.FromResult(BuildResult(context, purchase: true, suggestedStatus: ValePedagioStatus.Comprado, providerStatus: "purchased", operation: "purchase", existingSolicitacao: null));
+    }
+
+    public Task<ValePedagioProviderOperationResult> PurchaseAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
+    {
+        var context = BuildContext(solicitacao);
+        return Task.FromResult(BuildResult(context, purchase: true, suggestedStatus: ValePedagioStatus.Comprado, providerStatus: "purchased", operation: "purchase-from-quote", existingSolicitacao: solicitacao));
+    }
+
+    public Task<ValePedagioProviderOperationResult> SyncAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
+    {
+        var status = solicitacao.Status switch
+        {
+            ValePedagioStatus.EmCancelamento => ValePedagioStatus.Cancelado,
+            ValePedagioStatus.Comprado => ValePedagioStatus.Confirmado,
+            ValePedagioStatus.EmProcessamento => ValePedagioStatus.Cotado,
+            _ => solicitacao.Status
+        };
+
+        var providerStatus = status switch
+        {
+            ValePedagioStatus.Cancelado => "cancelled",
+            ValePedagioStatus.Confirmado => "confirmed",
+            ValePedagioStatus.Cotado => "quoted",
+            _ => "synced"
+        };
+
+        var rawResponse = JsonSerializer.Serialize(new
+        {
+            provider = Descriptor.DisplayName,
+            operation = "sync",
+            solicitationId = solicitacao.Id,
+            status,
+            providerStatus,
+            numeroCompra = solicitacao.NumeroCompra,
+            protocolo = solicitacao.Protocolo
+        });
+
+        var receipt = solicitacao.Receipt ?? (status is ValePedagioStatus.Comprado or ValePedagioStatus.Confirmado
+            ? BuildReceipt(BuildContext(solicitacao), solicitacao.Protocolo ?? $"{BuildSlug()}-SYNC-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}", solicitacao.NumeroCompra ?? $"{BuildSlug()}-SYNC", solicitacao.ValorTotal ?? CalculateAmount(BuildContext(solicitacao)), ResolveTipoValePedagio())
+            : null);
+
+        return Task.FromResult(new ValePedagioProviderOperationResult(
+            solicitacao.Protocolo,
+            solicitacao.NumeroCompra,
+            solicitacao.ValorTotal,
+            solicitacao.RegulatoryItems.ToList(),
+            receipt,
+            rawResponse,
+            providerStatus,
+            status));
     }
 
     public Task<ValePedagioProviderOperationResult> CancelAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
@@ -207,12 +267,14 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
         });
 
         return Task.FromResult(new ValePedagioProviderOperationResult(
-            $"{BuildSlug()}-CAN-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}",
+            solicitacao.Protocolo ?? $"{BuildSlug()}-CAN-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}",
             solicitacao.NumeroCompra ?? $"{BuildSlug()}-CAN",
             solicitacao.ValorTotal ?? 0m,
             solicitacao.RegulatoryItems.ToList(),
             solicitacao.Receipt,
-            rawResponse));
+            rawResponse,
+            "cancelled",
+            ValePedagioStatus.Cancelado));
     }
 
     public Task<ValePedagioReceipt?> GetReceiptAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
@@ -228,17 +290,7 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
         }
 
         var receipt = BuildReceipt(
-            new ValePedagioProviderOperationContext(
-                solicitacao.TenantId,
-                solicitacao.TransportadorId,
-                solicitacao.MotoristaId,
-                solicitacao.VeiculoId,
-                solicitacao.CteIds,
-                solicitacao.Route,
-                solicitacao.EstimatedCargoValue,
-                solicitacao.DocumentoResponsavelPagamento,
-                solicitacao.CallbackUrl,
-                solicitacao.Observacoes),
+            BuildContext(solicitacao),
             solicitacao.Protocolo ?? $"{BuildSlug()}-REC-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}",
             solicitacao.NumeroCompra,
             solicitacao.ValorTotal.Value,
@@ -247,11 +299,19 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
         return Task.FromResult<ValePedagioReceipt?>(receipt);
     }
 
-    private ValePedagioProviderOperationResult BuildResult(ValePedagioProviderOperationContext context, bool purchase)
+    private ValePedagioProviderOperationResult BuildResult(
+        ValePedagioProviderOperationContext context,
+        bool purchase,
+        ValePedagioStatus suggestedStatus,
+        string providerStatus,
+        string operation,
+        ValePedagioSolicitacao? existingSolicitacao)
     {
-        var amount = CalculateAmount(context);
-        var protocol = $"{BuildSlug()}-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
-        var numeroCompra = $"{(purchase ? "VP" : "COT")}-{BuildSlug()}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
+        var amount = existingSolicitacao?.ValorTotal ?? CalculateAmount(context);
+        var protocol = existingSolicitacao?.Protocolo ?? $"{BuildSlug()}-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
+        var numeroCompra = purchase
+            ? existingSolicitacao?.NumeroCompra ?? $"VP-{BuildSlug()}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}"
+            : existingSolicitacao?.NumeroCompra ?? $"COT-{BuildSlug()}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
         var tipoVale = ResolveTipoValePedagio();
 
         var vales = new List<ValePedagioRegulatoryItem>
@@ -264,13 +324,15 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
                 tipoVale)
         };
 
-        var receipt = purchase ? BuildReceipt(context, protocol, numeroCompra, amount, tipoVale) : null;
+        var receipt = purchase ? BuildReceipt(context, protocol, numeroCompra, amount, tipoVale) : existingSolicitacao?.Receipt;
 
         var rawResponse = JsonSerializer.Serialize(new
         {
             provider = Descriptor.DisplayName,
+            integrationMode = Descriptor.IntegrationMode,
             wave = Descriptor.Wave,
-            status = purchase ? "purchased" : "quoted",
+            operation,
+            status = providerStatus,
             protocol,
             numeroCompra,
             amount,
@@ -284,7 +346,15 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
             cteCount = context.CteIds.Count
         });
 
-        return new ValePedagioProviderOperationResult(protocol, numeroCompra, amount, vales, receipt, rawResponse);
+        return new ValePedagioProviderOperationResult(
+            protocol,
+            numeroCompra,
+            amount,
+            vales,
+            receipt,
+            rawResponse,
+            providerStatus,
+            suggestedStatus);
     }
 
     private ValePedagioReceipt BuildReceipt(ValePedagioProviderOperationContext context, string protocol, string numeroCompra, decimal amount, string tipoVale)
@@ -292,6 +362,7 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
         var lines = new[]
         {
             $"Recibo Vale-Pedágio - {Descriptor.DisplayName}",
+            $"Modo integração: {Descriptor.IntegrationMode}",
             $"Protocolo: {protocol}",
             $"NumeroCompra: {numeroCompra}",
             $"TransportadorId: {context.TransportadorId}",
@@ -331,6 +402,21 @@ public sealed class CatalogValePedagioProvider : IValePedagioProvider
             ValePedagioProviderType.Repom or ValePedagioProviderType.DBTrans => "Cartao",
             _ => "Cupom"
         };
+    }
+
+    private ValePedagioProviderOperationContext BuildContext(ValePedagioSolicitacao solicitacao)
+    {
+        return new ValePedagioProviderOperationContext(
+            solicitacao.TenantId,
+            solicitacao.TransportadorId,
+            solicitacao.MotoristaId,
+            solicitacao.VeiculoId,
+            solicitacao.CteIds,
+            solicitacao.Route,
+            solicitacao.EstimatedCargoValue,
+            solicitacao.DocumentoResponsavelPagamento,
+            solicitacao.CallbackUrl,
+            solicitacao.Observacoes);
     }
 
     private string BuildSlug()

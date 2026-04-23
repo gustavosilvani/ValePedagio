@@ -74,6 +74,44 @@ public sealed class SolicitacoesController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/comprar")]
+    public async Task<ActionResult<ValePedagioSolicitacaoResponse>> PurchaseFromQuoteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var tenantId = ResolveTenantId();
+        try
+        {
+            var response = await _service.PurchaseAsync(tenantId, id, cancellationToken);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/sincronizar")]
+    public async Task<ActionResult<ValePedagioSolicitacaoResponse>> SyncAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var tenantId = ResolveTenantId();
+        try
+        {
+            var response = await _service.SyncAsync(tenantId, id, cancellationToken);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("{id:guid}/cancelar")]
     public async Task<ActionResult<ValePedagioSolicitacaoResponse>> CancelAsync(Guid id, CancellationToken cancellationToken)
     {

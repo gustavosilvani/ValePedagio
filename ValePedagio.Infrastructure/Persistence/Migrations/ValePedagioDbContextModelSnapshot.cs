@@ -77,6 +77,9 @@ internal sealed class ValePedagioDbContextModelSnapshot : ModelSnapshot
                 .HasMaxLength(1024)
                 .HasColumnType("character varying(1024)");
 
+            b.Property<DateTimeOffset?>("ConcludedAt")
+                .HasColumnType("timestamp with time zone");
+
             b.Property<System.Collections.Generic.List<string>>("CteIds")
                 .IsRequired()
                 .HasColumnType("jsonb");
@@ -91,13 +94,34 @@ internal sealed class ValePedagioDbContextModelSnapshot : ModelSnapshot
             b.Property<decimal>("EstimatedCargoValue")
                 .HasColumnType("numeric");
 
+            b.Property<string>("FailureCategory")
+                .IsRequired()
+                .HasMaxLength(32)
+                .HasColumnType("character varying(32)");
+
             b.Property<string>("FailureReason")
                 .HasMaxLength(4000)
                 .HasColumnType("character varying(4000)");
 
+            b.Property<string>("FlowType")
+                .IsRequired()
+                .HasMaxLength(32)
+                .HasColumnType("character varying(32)");
+
+            b.Property<string>("IntegrationMode")
+                .IsRequired()
+                .HasMaxLength(32)
+                .HasColumnType("character varying(32)");
+
+            b.Property<DateTimeOffset?>("LastSyncAt")
+                .HasColumnType("timestamp with time zone");
+
             b.Property<string>("MotoristaId")
                 .HasMaxLength(128)
                 .HasColumnType("character varying(128)");
+
+            b.Property<DateTimeOffset?>("NextRetryAt")
+                .HasColumnType("timestamp with time zone");
 
             b.Property<string>("NumeroCompra")
                 .HasMaxLength(128)
@@ -115,6 +139,15 @@ internal sealed class ValePedagioDbContextModelSnapshot : ModelSnapshot
                 .IsRequired()
                 .HasMaxLength(32)
                 .HasColumnType("character varying(32)");
+
+            b.Property<System.Collections.Generic.List<ValePedagio.Domain.ValePedagioProviderArtifact>>("ProviderArtifacts")
+                .IsRequired()
+                .HasColumnType("jsonb");
+
+            b.Property<string>("ProviderStatus")
+                .IsRequired()
+                .HasMaxLength(128)
+                .HasColumnType("character varying(128)");
 
             b.Property<string>("RawRequestPayload")
                 .HasColumnType("text");
@@ -141,6 +174,10 @@ internal sealed class ValePedagioDbContextModelSnapshot : ModelSnapshot
                 .HasMaxLength(32)
                 .HasColumnType("character varying(32)");
 
+            b.Property<System.Collections.Generic.List<ValePedagio.Domain.ValePedagioSyncAttempt>>("SyncAttempts")
+                .IsRequired()
+                .HasColumnType("jsonb");
+
             b.Property<string>("TenantId")
                 .IsRequired()
                 .HasMaxLength(128)
@@ -164,6 +201,8 @@ internal sealed class ValePedagioDbContextModelSnapshot : ModelSnapshot
             b.HasKey("Id");
 
             b.HasIndex("TenantId", "CreatedAt");
+
+            b.HasIndex("TenantId", "Provider", "NumeroCompra");
 
             b.HasIndex("TenantId", "Provider", "Status");
 

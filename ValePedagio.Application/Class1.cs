@@ -22,6 +22,21 @@ public sealed record ValePedagioAuditTrailDto(
     string? ResponsePayload,
     DateTimeOffset OccurredAt);
 
+public sealed record ValePedagioSyncAttemptDto(
+    string Operation,
+    bool Successful,
+    string? RequestPayload,
+    string? ResponsePayload,
+    string? Message,
+    DateTimeOffset OccurredAt);
+
+public sealed record ValePedagioProviderArtifactDto(
+    string Operation,
+    ValePedagioArtifactType ArtifactType,
+    string? FileName,
+    string? ContentType,
+    DateTimeOffset OccurredAt);
+
 public sealed record ValePedagioProviderSummaryDto(
     ValePedagioProviderType Type,
     string DisplayName,
@@ -29,7 +44,8 @@ public sealed record ValePedagioProviderSummaryDto(
     IReadOnlyCollection<ValePedagioCapability> Capabilities,
     bool Enabled,
     string EndpointBaseUrl,
-    string CallbackMode);
+    string CallbackMode,
+    ValePedagioIntegrationMode IntegrationMode);
 
 public sealed record ValePedagioProviderConfigurationDto(
     string TenantId,
@@ -41,7 +57,8 @@ public sealed record ValePedagioProviderConfigurationDto(
     string EndpointBaseUrl,
     string CallbackMode,
     IReadOnlyDictionary<string, string> Credentials,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    ValePedagioIntegrationMode IntegrationMode);
 
 public sealed record ValePedagioProviderConfigurationRequest(
     bool Enabled,
@@ -61,12 +78,27 @@ public sealed record ValePedagioSolicitacaoRequest(
     string? Observacoes,
     string? CallbackUrl);
 
+public sealed record ValePedagioProviderCallbackRequest(
+    Guid? SolicitacaoId,
+    string? NumeroCompra,
+    string? Protocolo,
+    string? ProviderStatus,
+    decimal? ValorTotal,
+    string? FailureReason,
+    string? ReceiptBase64,
+    string? ReceiptFileName,
+    string? ReceiptContentType,
+    string? RawPayload);
+
 public sealed record ValePedagioSolicitacaoResponse(
     Guid Id,
     string TenantId,
     ValePedagioProviderType Provider,
     string ProviderDisplayName,
+    ValePedagioIntegrationMode IntegrationMode,
+    ValePedagioFlowType FlowType,
     ValePedagioStatus Status,
+    string ProviderStatus,
     string TransportadorId,
     string? MotoristaId,
     string? VeiculoId,
@@ -80,9 +112,19 @@ public sealed record ValePedagioSolicitacaoResponse(
     string? Observacoes,
     string? CallbackUrl,
     bool ReceiptAvailable,
+    bool CanPurchase,
+    bool CanCancel,
+    bool ArtifactsAvailable,
+    bool ImportableForMdfe,
     string? FailureReason,
+    ValePedagioFailureCategory FailureCategory,
+    DateTimeOffset? LastSyncAt,
+    DateTimeOffset? NextRetryAt,
+    DateTimeOffset? ConcludedAt,
     IReadOnlyCollection<ValePedagioRegulatoryItemDto> ValesPedagio,
     IReadOnlyCollection<ValePedagioAuditTrailDto> AuditTrail,
+    IReadOnlyCollection<ValePedagioSyncAttemptDto> SyncAttempts,
+    IReadOnlyCollection<ValePedagioProviderArtifactDto> Artifacts,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -101,6 +143,10 @@ public interface IValePedagioApplicationService
     Task<ValePedagioSolicitacaoResponse?> GetSolicitacaoAsync(string tenantId, Guid id, CancellationToken cancellationToken = default);
     Task<ValePedagioSolicitacaoResponse> QuoteAsync(string tenantId, ValePedagioSolicitacaoRequest request, CancellationToken cancellationToken = default);
     Task<ValePedagioSolicitacaoResponse> PurchaseAsync(string tenantId, ValePedagioSolicitacaoRequest request, CancellationToken cancellationToken = default);
+    Task<ValePedagioSolicitacaoResponse> PurchaseAsync(string tenantId, Guid id, CancellationToken cancellationToken = default);
+    Task<ValePedagioSolicitacaoResponse> SyncAsync(string tenantId, Guid id, CancellationToken cancellationToken = default);
+    Task<ValePedagioSolicitacaoResponse> ProcessCallbackAsync(string tenantId, ValePedagioProviderType provider, ValePedagioProviderCallbackRequest request, CancellationToken cancellationToken = default);
+    Task<int> SyncPendingAsync(CancellationToken cancellationToken = default);
     Task<ValePedagioSolicitacaoResponse> CancelAsync(string tenantId, Guid id, CancellationToken cancellationToken = default);
     Task<ValePedagioReceipt?> GetReceiptAsync(string tenantId, Guid id, CancellationToken cancellationToken = default);
 }
@@ -136,7 +182,8 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
                 descriptor.Capabilities,
                 config.Enabled,
                 config.EndpointBaseUrl,
-                config.CallbackMode));
+                config.CallbackMode,
+                descriptor.IntegrationMode));
         }
 
         return result;
@@ -209,25 +256,126 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
     public Task<ValePedagioSolicitacaoResponse> PurchaseAsync(string tenantId, ValePedagioSolicitacaoRequest request, CancellationToken cancellationToken = default)
         => ExecuteSolicitacaoAsync(tenantId, request, purchase: true, cancellationToken);
 
-    public async Task<ValePedagioSolicitacaoResponse> CancelAsync(string tenantId, Guid id, CancellationToken cancellationToken = default)
+    public async Task<ValePedagioSolicitacaoResponse> PurchaseAsync(string tenantId, Guid id, CancellationToken cancellationToken = default)
     {
-        var solicitacao = await _solicitacaoRepository.GetByIdAsync(id, cancellationToken);
-        if (solicitacao is null || !string.Equals(solicitacao.TenantId, tenantId, StringComparison.OrdinalIgnoreCase))
+        var solicitacao = await LoadSolicitacaoAsync(tenantId, id, cancellationToken);
+        if (!solicitacao.CanPurchase)
         {
-            throw new KeyNotFoundException($"Solicitação {id} não encontrada para o tenant informado.");
+            throw new InvalidOperationException("A solicitação atual não pode mais ser convertida em compra.");
         }
 
-        if (solicitacao.Status is ValePedagioStatus.Cancelado or ValePedagioStatus.Falha)
+        var provider = await _providerResolver.ResolveAsync(tenantId, ValePedagioCapability.Purchase, solicitacao.Provider, cancellationToken);
+        var rawRequestPayload = JsonSerializer.Serialize(new { solicitacaoId = solicitacao.Id, provider = solicitacao.Provider, operation = "purchase-from-quote" });
+
+        try
+        {
+            var result = await provider.PurchaseAsync(solicitacao, cancellationToken);
+            solicitacao.ApplyPurchase(result, rawRequestPayload, fromExistingQuote: true);
+            await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+            return MapSolicitacao(solicitacao);
+        }
+        catch (Exception ex)
+        {
+            solicitacao.ApplyFailure("purchase-from-quote", ex.Message, rawRequestPayload, null);
+            await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<ValePedagioSolicitacaoResponse> SyncAsync(string tenantId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var solicitacao = await LoadSolicitacaoAsync(tenantId, id, cancellationToken);
+        if (!solicitacao.CanSync)
+        {
+            throw new InvalidOperationException("A solicitação atual não está em um estado sincronizável.");
+        }
+
+        await ExecuteSyncAsync(solicitacao, cancellationToken);
+        return MapSolicitacao(solicitacao);
+    }
+
+    public async Task<ValePedagioSolicitacaoResponse> ProcessCallbackAsync(string tenantId, ValePedagioProviderType provider, ValePedagioProviderCallbackRequest request, CancellationToken cancellationToken = default)
+    {
+        var solicitacao = await _solicitacaoRepository.FindAsync(tenantId, provider, request.SolicitacaoId, request.NumeroCompra, request.Protocolo, cancellationToken);
+        if (solicitacao is null)
+        {
+            throw new KeyNotFoundException("Não foi possível localizar a solicitação de vale-pedágio para o callback informado.");
+        }
+
+        var rawPayload = string.IsNullOrWhiteSpace(request.RawPayload) ? JsonSerializer.Serialize(request) : request.RawPayload;
+        var result = new ValePedagioProviderOperationResult(
+            Protocolo: request.Protocolo ?? solicitacao.Protocolo,
+            NumeroCompra: request.NumeroCompra ?? solicitacao.NumeroCompra,
+            ValorTotal: request.ValorTotal ?? solicitacao.ValorTotal,
+            ValesPedagio: solicitacao.RegulatoryItems.ToList(),
+            Receipt: TryBuildReceipt(request),
+            RawResponsePayload: rawPayload,
+            ProviderStatus: request.ProviderStatus,
+            SuggestedStatus: MapCallbackStatus(request.ProviderStatus, solicitacao.Status, request.FailureReason),
+            FailureReason: request.FailureReason,
+            FailureCategory: string.IsNullOrWhiteSpace(request.FailureReason) ? ValePedagioFailureCategory.None : ValePedagioFailureCategory.ProviderRejected,
+            NextRetryAt: null);
+
+        solicitacao.ApplyCallback(result, rawPayload);
+        await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+        return MapSolicitacao(solicitacao);
+    }
+
+    public async Task<int> SyncPendingAsync(CancellationToken cancellationToken = default)
+    {
+        var pending = await _solicitacaoRepository.ListPendingSyncAsync(DateTimeOffset.UtcNow, maxItems: 25, cancellationToken);
+        var processed = 0;
+
+        foreach (var solicitacao in pending)
+        {
+            try
+            {
+                await ExecuteSyncAsync(solicitacao, cancellationToken);
+                processed += 1;
+            }
+            catch (Exception ex)
+            {
+                solicitacao.ApplyFailure(
+                    "sync",
+                    ex.Message,
+                    JsonSerializer.Serialize(new { solicitacaoId = solicitacao.Id, provider = solicitacao.Provider, mode = "scheduled" }),
+                    null,
+                    category: ValePedagioFailureCategory.OperationalPending,
+                    nextRetryAt: DateTimeOffset.UtcNow.AddMinutes(5),
+                    keepCurrentStatus: true);
+
+                await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+            }
+        }
+
+        return processed;
+    }
+
+    public async Task<ValePedagioSolicitacaoResponse> CancelAsync(string tenantId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var solicitacao = await LoadSolicitacaoAsync(tenantId, id, cancellationToken);
+        if (!solicitacao.CanCancel)
         {
             throw new InvalidOperationException("A solicitação já está finalizada e não pode ser cancelada novamente.");
         }
 
         var provider = await _providerResolver.ResolveAsync(tenantId, ValePedagioCapability.Cancel, solicitacao.Provider, cancellationToken);
         var rawRequestPayload = JsonSerializer.Serialize(new { solicitacaoId = solicitacao.Id, provider = solicitacao.Provider, operation = "cancel" });
-        var result = await provider.CancelAsync(solicitacao, cancellationToken);
-        solicitacao.ApplyCancellation(result, rawRequestPayload);
-        await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+        solicitacao.BeginCancellation();
 
+        try
+        {
+            var result = await provider.CancelAsync(solicitacao, cancellationToken);
+            solicitacao.ApplyCancellation(result, rawRequestPayload);
+        }
+        catch (Exception ex)
+        {
+            solicitacao.ApplyFailure("cancel", ex.Message, rawRequestPayload, null);
+            await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+            throw;
+        }
+
+        await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
         return MapSolicitacao(solicitacao);
     }
 
@@ -267,6 +415,8 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
             Guid.NewGuid(),
             tenantId,
             provider.Descriptor.Type,
+            provider.Descriptor.IntegrationMode,
+            purchase ? ValePedagioFlowType.QuoteAndPurchase : ValePedagioFlowType.QuoteOnly,
             request.TransportadorId.Trim(),
             request.MotoristaId?.Trim(),
             request.VeiculoId?.Trim(),
@@ -321,6 +471,26 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
         return MapSolicitacao(solicitacao);
     }
 
+    private async Task ExecuteSyncAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken)
+    {
+        var provider = await _providerResolver.ResolveAsync(solicitacao.TenantId, ValePedagioCapability.Sync, solicitacao.Provider, cancellationToken);
+        var rawRequestPayload = JsonSerializer.Serialize(new { solicitacaoId = solicitacao.Id, provider = solicitacao.Provider, operation = "sync" });
+        var result = await provider.SyncAsync(solicitacao, cancellationToken);
+        solicitacao.ApplySync(result, rawRequestPayload);
+        await _solicitacaoRepository.AddOrUpdateAsync(solicitacao, cancellationToken);
+    }
+
+    private async Task<ValePedagioSolicitacao> LoadSolicitacaoAsync(string tenantId, Guid id, CancellationToken cancellationToken)
+    {
+        var solicitacao = await _solicitacaoRepository.GetByIdAsync(id, cancellationToken);
+        if (solicitacao is null || !string.Equals(solicitacao.TenantId, tenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new KeyNotFoundException($"Solicitação {id} não encontrada para o tenant informado.");
+        }
+
+        return solicitacao;
+    }
+
     private static void ValidateRequest(ValePedagioSolicitacaoRequest request)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(request.TransportadorId);
@@ -367,7 +537,8 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
             config.EndpointBaseUrl,
             config.CallbackMode,
             ValePedagioCredentialMasking.MaskForDisplay(config.Credentials),
-            config.UpdatedAt);
+            config.UpdatedAt,
+            descriptor.IntegrationMode);
     }
 
     private ValePedagioSolicitacaoResponse MapSolicitacao(ValePedagioSolicitacao solicitacao)
@@ -378,7 +549,10 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
             solicitacao.TenantId,
             solicitacao.Provider,
             descriptor.DisplayName,
+            solicitacao.IntegrationMode,
+            solicitacao.FlowType,
             solicitacao.Status,
+            solicitacao.ProviderStatus,
             solicitacao.TransportadorId,
             solicitacao.MotoristaId,
             solicitacao.VeiculoId,
@@ -396,7 +570,15 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
             solicitacao.Observacoes,
             solicitacao.CallbackUrl,
             solicitacao.Receipt is not null,
+            solicitacao.CanPurchase,
+            solicitacao.CanCancel,
+            solicitacao.ArtifactsAvailable,
+            solicitacao.IsImportableForMdfe,
             solicitacao.FailureReason,
+            solicitacao.FailureCategory,
+            solicitacao.LastSyncAt,
+            solicitacao.NextRetryAt,
+            solicitacao.ConcludedAt,
             solicitacao.RegulatoryItems
                 .Select(static item => new ValePedagioRegulatoryItemDto(
                     item.CnpjFornecedor,
@@ -412,7 +594,73 @@ public sealed class ValePedagioApplicationService : IValePedagioApplicationServi
                     item.ResponsePayload,
                     item.OccurredAt))
                 .ToList(),
+            solicitacao.SyncAttempts
+                .Select(static item => new ValePedagioSyncAttemptDto(
+                    item.Operation,
+                    item.Successful,
+                    item.RequestPayload,
+                    item.ResponsePayload,
+                    item.Message,
+                    item.OccurredAt))
+                .ToList(),
+            solicitacao.ProviderArtifacts
+                .Select(static item => new ValePedagioProviderArtifactDto(
+                    item.Operation,
+                    item.ArtifactType,
+                    item.FileName,
+                    item.ContentType,
+                    item.OccurredAt))
+                .ToList(),
             solicitacao.CreatedAt,
             solicitacao.UpdatedAt);
+    }
+
+    private static ValePedagioReceipt? TryBuildReceipt(ValePedagioProviderCallbackRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ReceiptBase64))
+        {
+            return null;
+        }
+
+        try
+        {
+            return new ValePedagioReceipt(
+                request.ReceiptFileName ?? $"vale-pedagio-callback-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.bin",
+                request.ReceiptContentType ?? "application/octet-stream",
+                Convert.FromBase64String(request.ReceiptBase64),
+                DateTimeOffset.UtcNow);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static ValePedagioStatus MapCallbackStatus(string? providerStatus, ValePedagioStatus currentStatus, string? failureReason)
+    {
+        if (!string.IsNullOrWhiteSpace(failureReason))
+        {
+            return ValePedagioStatus.Recusado;
+        }
+
+        if (string.IsNullOrWhiteSpace(providerStatus))
+        {
+            return currentStatus;
+        }
+
+        return providerStatus.Trim().ToLowerInvariant() switch
+        {
+            "quoted" or "cotado" => ValePedagioStatus.Cotado,
+            "purchased" or "comprado" => ValePedagioStatus.Comprado,
+            "confirmed" or "confirmado" => ValePedagioStatus.Confirmado,
+            "route_without_cost" or "rota_sem_custo" => ValePedagioStatus.RotaSemCusto,
+            "route_registration_pending" or "aguardando_cadastro_rota" => ValePedagioStatus.AguardandoCadastroRota,
+            "rejected" or "recusado" => ValePedagioStatus.Recusado,
+            "cancellation_pending" or "em_cancelamento" => ValePedagioStatus.EmCancelamento,
+            "cancelled" or "cancelado" => ValePedagioStatus.Cancelado,
+            "closed" or "encerrado" => ValePedagioStatus.Encerrado,
+            "failed" or "falha" => ValePedagioStatus.Falha,
+            _ => currentStatus
+        };
     }
 }

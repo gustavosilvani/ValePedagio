@@ -39,6 +39,20 @@ public sealed class EFreteValePedagioProvider : IValePedagioProvider
         return await _client.PurchaseAsync(settings, context, cancellationToken);
     }
 
+    public async Task<ValePedagioProviderOperationResult> PurchaseAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
+    {
+        var configuration = await _configurationRepository.GetAsync(solicitacao.TenantId, Descriptor.Type, cancellationToken);
+        var settings = EFreteProviderSettings.FromConfiguration(configuration);
+        return await _client.PurchaseAsync(settings, solicitacao, cancellationToken);
+    }
+
+    public async Task<ValePedagioProviderOperationResult> SyncAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
+    {
+        var configuration = await _configurationRepository.GetAsync(solicitacao.TenantId, Descriptor.Type, cancellationToken);
+        var settings = EFreteProviderSettings.FromConfiguration(configuration);
+        return await _client.SyncAsync(settings, solicitacao, cancellationToken);
+    }
+
     public async Task<ValePedagioProviderOperationResult> CancelAsync(ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken = default)
     {
         var configuration = await _configurationRepository.GetAsync(solicitacao.TenantId, Descriptor.Type, cancellationToken);
@@ -82,7 +96,7 @@ public sealed class EFreteSoapClient
             BuildRequestBody(settings, EFreteOperationKind.Quote, context, null),
             cancellationToken);
 
-        return BuildOperationResult(settings, context.DocumentoResponsavelPagamento, payload, defaultReceipt: null);
+        return BuildOperationResult(settings, context.DocumentoResponsavelPagamento, payload, defaultReceipt: null, "quoted", ValePedagioStatus.Cotado);
     }
 
     public async Task<ValePedagioProviderOperationResult> PurchaseAsync(EFreteProviderSettings settings, ValePedagioProviderOperationContext context, CancellationToken cancellationToken)
@@ -95,7 +109,40 @@ public sealed class EFreteSoapClient
             cancellationToken);
 
         var receipt = TryBuildReceipt(payload, settings);
-        return BuildOperationResult(settings, context.DocumentoResponsavelPagamento, payload, receipt);
+        return BuildOperationResult(settings, context.DocumentoResponsavelPagamento, payload, receipt, "purchased", ValePedagioStatus.Comprado);
+    }
+
+    public async Task<ValePedagioProviderOperationResult> PurchaseAsync(EFreteProviderSettings settings, ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken)
+    {
+        var payload = await SendOperationAsync(
+            settings,
+            EFreteOperationKind.Purchase,
+            solicitacao.TenantId,
+            BuildRequestBody(settings, EFreteOperationKind.Purchase, null, solicitacao),
+            cancellationToken);
+
+        var receipt = TryBuildReceipt(payload, settings) ?? solicitacao.Receipt;
+        return BuildOperationResult(settings, solicitacao.DocumentoResponsavelPagamento, payload, receipt, "purchased", ValePedagioStatus.Comprado);
+    }
+
+    public async Task<ValePedagioProviderOperationResult> SyncAsync(EFreteProviderSettings settings, ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken)
+    {
+        var payload = await SendOperationAsync(
+            settings,
+            EFreteOperationKind.Sync,
+            solicitacao.TenantId,
+            BuildRequestBody(settings, EFreteOperationKind.Sync, null, solicitacao),
+            cancellationToken);
+
+        var receipt = TryBuildReceipt(payload, settings) ?? solicitacao.Receipt;
+        var providerStatus = TryResolveStatus(payload, solicitacao.Status);
+        return BuildOperationResult(
+            settings,
+            solicitacao.DocumentoResponsavelPagamento,
+            payload,
+            receipt,
+            providerStatus,
+            MapStatus(providerStatus, solicitacao.Status));
     }
 
     public async Task<ValePedagioProviderOperationResult> CancelAsync(EFreteProviderSettings settings, ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken)
@@ -113,7 +160,9 @@ public sealed class EFreteSoapClient
             payload.TotalAmount ?? solicitacao.ValorTotal ?? 0m,
             solicitacao.RegulatoryItems.ToList(),
             solicitacao.Receipt,
-            payload.RawXml);
+            payload.RawXml,
+            "cancelled",
+            ValePedagioStatus.Cancelado);
     }
 
     public async Task<ValePedagioReceipt?> GetReceiptAsync(EFreteProviderSettings settings, ValePedagioSolicitacao solicitacao, CancellationToken cancellationToken)
@@ -251,7 +300,9 @@ public sealed class EFreteSoapClient
         EFreteProviderSettings settings,
         string? documentoResponsavelPagamento,
         EFreteSoapPayload payload,
-        ValePedagioReceipt? defaultReceipt)
+        ValePedagioReceipt? defaultReceipt,
+        string providerStatus,
+        ValePedagioStatus suggestedStatus)
     {
         var numeroCompra = payload.PurchaseNumber ?? payload.Protocol ?? $"EFRETE-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
         var valorTotal = payload.TotalAmount ?? 0m;
@@ -273,7 +324,9 @@ public sealed class EFreteSoapClient
             valorTotal,
             regulatoryItems,
             payload.Receipt ?? defaultReceipt,
-            payload.RawXml);
+            payload.RawXml,
+            providerStatus,
+            suggestedStatus);
     }
 
     private static string BuildRequestBody(
@@ -429,6 +482,45 @@ public sealed class EFreteSoapClient
             TryParseReceipt(document));
     }
 
+    private static string TryResolveStatus(EFreteSoapPayload payload, ValePedagioStatus fallbackStatus)
+    {
+        var raw = payload.RawXml;
+        if (raw.Contains("Confirmado", StringComparison.OrdinalIgnoreCase) || raw.Contains("confirmed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "confirmed";
+        }
+
+        if (raw.Contains("Cancelado", StringComparison.OrdinalIgnoreCase) || raw.Contains("cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            return "cancelled";
+        }
+
+        if (raw.Contains("Cotado", StringComparison.OrdinalIgnoreCase) || raw.Contains("quoted", StringComparison.OrdinalIgnoreCase))
+        {
+            return "quoted";
+        }
+
+        return fallbackStatus switch
+        {
+            ValePedagioStatus.Comprado => "purchased",
+            ValePedagioStatus.Confirmado => "confirmed",
+            ValePedagioStatus.EmCancelamento => "cancellation_pending",
+            _ => "synced"
+        };
+    }
+
+    private static ValePedagioStatus MapStatus(string providerStatus, ValePedagioStatus fallbackStatus)
+    {
+        return providerStatus switch
+        {
+            "quoted" => ValePedagioStatus.Cotado,
+            "purchased" => ValePedagioStatus.Comprado,
+            "confirmed" => ValePedagioStatus.Confirmado,
+            "cancelled" => ValePedagioStatus.Cancelado,
+            _ => fallbackStatus
+        };
+    }
+
     private static ValePedagioReceipt? TryBuildReceipt(EFreteSoapPayload payload, EFreteProviderSettings settings)
     {
         return payload.Receipt ?? TryBuildFallbackReceipt(payload, settings);
@@ -572,6 +664,7 @@ public sealed record EFreteProviderSettings(
     string? LoginRequestTemplate,
     EFreteOperationConfiguration Quote,
     EFreteOperationConfiguration Purchase,
+    EFreteOperationConfiguration Sync,
     EFreteOperationConfiguration Cancel,
     EFreteOperationConfiguration Receipt,
     TimeSpan Timeout)
@@ -582,6 +675,7 @@ public sealed record EFreteProviderSettings(
         {
             EFreteOperationKind.Quote => Quote,
             EFreteOperationKind.Purchase => Purchase,
+            EFreteOperationKind.Sync => Sync,
             EFreteOperationKind.Cancel => Cancel,
             EFreteOperationKind.Receipt => Receipt,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
@@ -627,6 +721,12 @@ public sealed record EFreteProviderSettings(
                 TryGet(credentials, "purchaseVersion") ?? "1",
                 TryGet(credentials, "purchaseRequestTemplate")),
             new EFreteOperationConfiguration(
+                TryGet(credentials, "syncServicePath") ?? "ValePedagioService.asmx",
+                TryGet(credentials, "syncOperation") ?? "ConsultarValePedagio",
+                TryGet(credentials, "syncAction") ?? $"{operationNamespace.TrimEnd('/')}/ConsultarValePedagio",
+                TryGet(credentials, "syncVersion") ?? "1",
+                TryGet(credentials, "syncRequestTemplate")),
+            new EFreteOperationConfiguration(
                 TryGet(credentials, "cancelServicePath") ?? "ValePedagioService.asmx",
                 TryGet(credentials, "cancelOperation") ?? "CancelarValePedagio",
                 TryGet(credentials, "cancelAction") ?? $"{operationNamespace.TrimEnd('/')}/CancelarValePedagio",
@@ -653,6 +753,7 @@ public enum EFreteOperationKind
 {
     Quote,
     Purchase,
+    Sync,
     Cancel,
     Receipt
 }

@@ -45,6 +45,34 @@ public sealed class PostgresValePedagioSolicitacaoRepository : IValePedagioSolic
             .OrderByDescending(item => item.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<ValePedagioSolicitacao>> ListPendingSyncAsync(DateTimeOffset asOf, int maxItems, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Solicitacoes
+            .AsNoTracking()
+            .Where(item =>
+                item.Status == ValePedagioStatus.EmProcessamento ||
+                item.Status == ValePedagioStatus.Comprado ||
+                item.Status == ValePedagioStatus.Confirmado ||
+                item.Status == ValePedagioStatus.EmCancelamento)
+            .Where(item => item.NextRetryAt == null || item.NextRetryAt <= asOf)
+            .OrderBy(item => item.NextRetryAt ?? item.UpdatedAt)
+            .Take(Math.Max(1, maxItems))
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<ValePedagioSolicitacao?> FindAsync(string tenantId, ValePedagioProviderType provider, Guid? id, string? numeroCompra, string? protocolo, CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Solicitacoes
+            .AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.Provider == provider)
+            .Where(item =>
+                (id.HasValue && item.Id == id.Value) ||
+                (!string.IsNullOrWhiteSpace(numeroCompra) && item.NumeroCompra == numeroCompra) ||
+                (!string.IsNullOrWhiteSpace(protocolo) && item.Protocolo == protocolo))
+            .OrderByDescending(item => item.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }
 
 public sealed class PostgresValePedagioProviderConfigurationRepository : IValePedagioProviderConfigurationRepository
