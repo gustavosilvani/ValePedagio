@@ -8,7 +8,7 @@ using ValePedagio.Domain;
 
 namespace ValePedagio.Infrastructure.Providers;
 
-internal sealed record RestProviderSettings(
+public sealed record RestProviderSettings(
     string EndpointBaseUrl,
     string ClientId,
     string ApiKey,
