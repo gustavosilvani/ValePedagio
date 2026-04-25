@@ -118,11 +118,33 @@ builder.Services.AddHttpClient<EFreteSoapClient>(client =>
     client.Timeout = Timeout.InfiniteTimeSpan;
 });
 
+// Wave 1 — real HTTP providers (enabled per tenant via configuration)
+builder.Services.AddHttpClient<DbTransHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<RepomHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<DigitalComHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+
+// Wave 2
+builder.Services.AddHttpClient<AmbiparHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<ExtrattaHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<PamcardHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+
+// Wave 3
+builder.Services.AddHttpClient<QualpHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<SemPararHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<TargetHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+builder.Services.AddHttpClient<NddCargoHttpClient>(client => { client.Timeout = Timeout.InfiniteTimeSpan; });
+
 builder.Services.AddScoped<IValePedagioProvider, EFreteValePedagioProvider>();
-foreach (var descriptor in ValePedagioProviderCatalog.Descriptors.Where(item => item.Type != ValePedagioProviderType.EFrete))
-{
-    builder.Services.AddScoped<IValePedagioProvider>(_ => new CatalogValePedagioProvider(descriptor));
-}
+builder.Services.AddScoped<IValePedagioProvider, DbTransValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, RepomValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, DigitalComValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, AmbiparValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, ExtrattaValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, PamcardValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, QualpValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, SemPararValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, TargetValePedagioProvider>();
+builder.Services.AddScoped<IValePedagioProvider, NddCargoValePedagioProvider>();
 
 var app = builder.Build();
 
