@@ -5,3 +5,7 @@ out/
 *.user
 *.log
 .DS_Store
+
+# Coverage
+cov*/
+coverage-results/
